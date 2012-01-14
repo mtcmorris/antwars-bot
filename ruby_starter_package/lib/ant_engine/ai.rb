@@ -53,7 +53,7 @@ class AntEngine::AI
 		@stdout.puts 'go'
 		@stdout.flush
 
-		@map=Array.new(@rows){|row| Array.new(@cols){|col| Square.new false, false, false, nil, row, col, self } }
+		@map=Array.new(@rows){|row| Array.new(@cols){|col| AntEngine::Square.new false, false, false, nil, row, col, self } }
 		@did_setup=true
 	end
 
@@ -146,7 +146,7 @@ class AntEngine::AI
 			when 'h'
 				@map[row][col].hill=owner
 			when 'a'
-				a=Ant.new true, owner, @map[row][col], self
+				a=AntEngine::Ant.new true, owner, @map[row][col], self
 				@map[row][col].ant = a
 
 				if owner==0
@@ -155,7 +155,7 @@ class AntEngine::AI
 					enemy_ants.push a
 				end
 			when 'd'
-				d=Ant.new false, owner, @map[row][col], self
+				d=AntEngine::Ant.new false, owner, @map[row][col], self
 				@map[row][col].ant = d
 			when 'r'
 				# pass

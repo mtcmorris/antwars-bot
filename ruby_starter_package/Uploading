@@ -1,3 +1,3 @@
 Zip the contents of this folder and upload.
 
-Do not rename bot.rb
+Do not rename lib/bot.rb - the server hooks into this to run your bot
