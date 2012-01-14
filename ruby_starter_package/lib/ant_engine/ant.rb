@@ -9,6 +9,7 @@ class AntEngine::Ant
 
 	def initialize alive, owner, square, ai
 		@alive, @owner, @square, @ai = alive, owner, square, ai
+		@moved = false
 	end
 
 	# True if ant is alive.
@@ -28,6 +29,9 @@ class AntEngine::Ant
 
 	# Order this ant to go in given direction. Equivalent to ai.order ant, direction.
 	def order direction
+	  @moved = true
 		@ai.order self, direction
 	end
+
+	def moved?; @moved; end
 end
