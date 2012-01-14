@@ -176,11 +176,22 @@ class AntEngine::AI
 		if !c # assume two-argument form: ant, direction
 			ant, direction = a, b
 			@stdout.puts "o #{ant.row} #{ant.col} #{direction.to_s.upcase}"
+			new_position(ant.row, ant.col, direction)
 		else # assume three-argument form: row, col, direction
 			row, col, direction = a, b, c
 			@stdout.puts "o #{row} #{col} #{direction.to_s.upcase}"
+			new_position(row, col, direction)
 		end
 	end
+
+	def new_position(row, col, direction)
+	  case direction
+    when :N then [row - 1, col ]
+    when :S then [row + 1, col ]
+    when :E then [row , col + 1]
+    when :W then [row , col - 1]
+    end
+  end
 
 	# Returns an array of your alive ants on the gamefield.
 	def my_ants; @my_ants; end

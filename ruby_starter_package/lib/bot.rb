@@ -20,6 +20,7 @@ class Bot
   def run(ai)
     # your turn code here
     @logger.log "Ran turn"
+    @destinations = []
     # Get food locations
     food = food_locations(ai)
     @logger.log food.inspect
@@ -28,8 +29,8 @@ class Bot
   	  if food_to_move_to
     	  vector = get_vector(food_to_move_to, [ant.row, ant.col])
     	  vector.each{|dir|
-          if ant.square.neighbor(dir).land? && !ant.square.neighbor(dir).ant?
-            ant.order dir
+          if good_move?(ant.square.neighbor(dir))
+    				@destinations.push (ant.order dir)
             break
           end
     	  }
@@ -38,9 +39,9 @@ class Bot
       if !ant.moved?
     		# Move randomly
 
-    		[:N, :E, :S, :W].shuffle do |dir|
-    			if ant.square.neighbor(dir).land? && !ant.square.neighbor(dir).ant?
-    				ant.order dir
+    		[:N, :E, :S, :W].shuffle.each do |dir|
+    			if good_move?(ant.square.neighbor(dir))
+    				@destinations.push (ant.order dir)
     				break
     			end
     		end
@@ -48,11 +49,13 @@ class Bot
   	end
   end
 
+  def good_move?(square)
+    square.land? && !square.ant? && @destinations.select{|d| d[0] == square.row && d[1] == square.col }.empty?
+  end
+
   def distance(coord1, coord2)
     Math.sqrt(
-      (coord1[0] - coord2[0]).abs ** 2
-        +
-      (coord1[1] - coord2[1]).abs ** 2)
+      (coord1[0] - coord2[0]).abs ** 2 + (coord1[1] - coord2[1]).abs ** 2
     )
   end
 
@@ -69,7 +72,7 @@ class Bot
     elsif coord1[0] > coord2[0]
       vector.push :E
     end
-    vector
+    vector.shuffle
   end
 
   def food_locations(ai)
