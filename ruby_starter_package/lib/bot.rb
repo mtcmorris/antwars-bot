@@ -49,9 +49,11 @@ class Bot
   end
 
   def distance(coord1, coord2)
-    (coord1[0] - coord2[0]).abs
-    +
-    (coord1[1] - coord2[1]).abs
+    Math.sqrt(
+      (coord1[0] - coord2[0]).abs ** 2
+        +
+      (coord1[1] - coord2[1]).abs ** 2)
+    )
   end
 
   def get_vector(coord1, coord2)
