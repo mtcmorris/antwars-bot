@@ -8,28 +8,28 @@ class Ant
 	attr_accessor :owner
 	# Square this ant sits on.
 	attr_accessor :square
-	
+
 	attr_accessor :alive, :ai
-	
+
 	def initialize alive, owner, square, ai
 		@alive, @owner, @square, @ai = alive, owner, square, ai
 	end
-	
+
 	# True if ant is alive.
 	def alive?; @alive; end
 	# True if ant is not alive.
 	def dead?; !@alive; end
-	
+
 	# Equivalent to ant.owner==0.
 	def mine?; owner==0; end
 	# Equivalent to ant.owner!=0.
 	def enemy?; owner!=0; end
-	
+
 	# Returns the row of square this ant is standing at.
 	def row; @square.row; end
 	# Returns the column of square this ant is standing at.
 	def col; @square.col; end
-	
+
 	# Order this ant to go in given direction. Equivalent to ai.order ant, direction.
 	def order direction
 		@ai.order self, direction
@@ -44,13 +44,13 @@ class Square
 	attr_accessor :row
 	# Which column this square belongs to.
 	attr_accessor :col
-	
+
 	attr_accessor :water, :food, :hill, :ai
-	
+
 	def initialize water, food, hill, ant, row, col, ai
 		@water, @food, @hill, @ant, @row, @col, @ai = water, food, hill, ant, row, col, ai
 	end
-	
+
 	# Returns true if this square is not water. Square is passable if it's not water, it doesn't contain alive ants and it doesn't contain food.
 	def land?; !@water; end
 	# Returns true if this square is water.
@@ -61,11 +61,11 @@ class Square
 	def hill?; @hill; end
 	# Returns true if this square has an alive ant.
 	def ant?; @ant and @ant.alive?; end;
-	
+
 	# Returns a square neighboring this one in given direction.
 	def neighbor direction
 		direction=direction.to_s.upcase.to_sym # canonical: :N, :E, :S, :W
-	
+
 		case direction
 		when :N
 			row, col = @ai.normalize @row-1, @col
@@ -78,7 +78,7 @@ class Square
 		else
 			raise 'incorrect direction'
 		end
-		
+
 		return @ai.map[row][col]
 	end
 end
@@ -88,12 +88,12 @@ class AI
 	attr_accessor :map
 	# Number of current turn. If it's 0, we're in setup turn. If it's :game_over, you don't need to give any orders; instead, you can find out the number of players and their scores in this game.
 	attr_accessor	:turn_number
-	
+
 	# Game settings. Integers.
 	attr_accessor :loadtime, :turntime, :rows, :cols, :turns, :viewradius2, :attackradius2, :spawnradius2, :seed
 	# Radii, unsquared. Floats.
 	attr_accessor :viewradius, :attackradius, :spawnradius
-	
+
 	# Number of players. Available only after game's over.
 	attr_accessor :players
 	# Array of scores of players (you are player 0). Available only after game's over.
@@ -105,13 +105,13 @@ class AI
 
 		@map=nil
 		@turn_number=0
-		
+
 		@my_ants=[]
 		@enemy_ants=[]
-		
+
 		@did_setup=false
 	end
-	
+
 	# Returns a read-only hash of all settings.
 	def settings
 		{
@@ -129,28 +129,28 @@ class AI
 			:seed => @seed
 		}.freeze
 	end
-	
-	# Zero-turn logic. 
+
+	# Zero-turn logic.
 	def setup # :yields: self
 		read_intro
 		yield self
-		
+
 		@stdout.puts 'go'
 		@stdout.flush
-		
+
 		@map=Array.new(@rows){|row| Array.new(@cols){|col| Square.new false, false, false, nil, row, col, self } }
 		@did_setup=true
 	end
-	
+
 	# Turn logic. If setup wasn't yet called, it will call it (and yield the block in it once).
 	def run &b # :yields: self
 		setup &b if !@did_setup
-		
+
 		over=false
 		until over
 			over = read_turn
 			yield self
-			
+
 			@stdout.puts 'go'
 			@stdout.flush
 		end
@@ -163,7 +163,7 @@ class AI
 
 		until((rd=@stdin.gets.strip)=='ready')
 			_, name, value = *rd.match(/\A([a-z0-9]+) (\d+)\Z/)
-			
+
 			case name
 			when 'loadtime'; @loadtime=value.to_i
 			when 'turntime'; @turntime=value.to_i
@@ -178,34 +178,34 @@ class AI
 				warn "unexpected: #{rd}"
 			end
 		end
-		
+
 		@viewradius=Math.sqrt @viewradius2
 		@attackradius=Math.sqrt @attackradius2
 		@spawnradius=Math.sqrt @spawnradius2
 	end
-	
+
 	# Internal; reads turn input (map state).
 	def read_turn
 		ret=false
 		rd=@stdin.gets.strip
-		
+
 		if rd=='end'
 			@turn_number=:game_over
-			
+
 			rd=@stdin.gets.strip
 			_, players = *rd.match(/\Aplayers (\d+)\Z/)
 			@players = players.to_i
-			
+
 			rd=@stdin.gets.strip
 			_, score = *rd.match(/\Ascore (\d+(?: \d+)+)\Z/)
 			@score = score.split(' ').map{|s| s.to_i}
-			
+
 			ret=true
 		else
 			_, num = *rd.match(/\Aturn (\d+)\Z/)
 			@turn_number=num.to_i
 		end
-	
+
 		# reset the map data
 		@map.each do |row|
 			row.each do |square|
@@ -214,15 +214,15 @@ class AI
 				square.hill=false
 			end
 		end
-		
+
 		@my_ants=[]
 		@enemy_ants=[]
-		
+
 		until((rd=@stdin.gets.strip)=='go')
 			_, type, row, col, owner = *rd.match(/(w|f|h|a|d) (\d+) (\d+)(?: (\d+)|)/)
 			row, col = row.to_i, col.to_i
 			owner = owner.to_i if owner
-			
+
 			case type
 			when 'w'
 				@map[row][col].water=true
@@ -233,7 +233,7 @@ class AI
 			when 'a'
 				a=Ant.new true, owner, @map[row][col], self
 				@map[row][col].ant = a
-				
+
 				if owner==0
 					my_ants.push a
 				else
@@ -251,9 +251,7 @@ class AI
 
 		return ret
 	end
-	
-	
-	
+
 	# call-seq:
 	#   order(ant, direction)
 	#   order(row, col, direction)
@@ -268,15 +266,12 @@ class AI
 			@stdout.puts "o #{row} #{col} #{direction.to_s.upcase}"
 		end
 	end
-	
-	
-	
-	
+
 	# Returns an array of your alive ants on the gamefield.
 	def my_ants; @my_ants; end
 	# Returns an array of alive enemy ants on the gamefield.
 	def enemy_ants; @enemy_ants; end
-	
+
 	# If row or col are greater than or equal map width/height, makes them fit the map.
 	#
 	# Handles negative values correctly (it may return a negative value, but always one that is a correct index).
@@ -286,14 +281,4 @@ class AI
 		[row % @rows, col % @cols]
 	end
 end
-
-
-
-
-
-
-
-
-
-
 
