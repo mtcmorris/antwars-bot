@@ -103,9 +103,9 @@ class Bot
   	end
 
     raise "collieded" if(ai.my_ants.map(&:destination).compact.count != ai.my_ants.map(&:destination).compact.uniq.count)
-  # rescue Exception => e
-  #     @logger.log "EXCEPTION #{e.to_s}"
-  #     @logger.log caller.join("\n")
+  rescue Exception => e
+      @logger.log "EXCEPTION #{e.to_s}"
+      @logger.log caller.join("\n")
   end
 
   def move_via_pathfinder(ant, square, reason = "unknown")
