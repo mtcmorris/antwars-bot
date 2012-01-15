@@ -7,6 +7,8 @@ class AntEngine::Ant
 
 	attr_accessor :alive, :ai
 
+	attr_accessor :destination
+
 	def initialize alive, owner, square, ai
 		@alive, @owner, @square, @ai = alive, owner, square, ai
 		@moved = false
@@ -29,13 +31,16 @@ class AntEngine::Ant
 
 	# Order this ant to go in given direction. Equivalent to ai.order ant, direction.
 	def order direction
-	  @moved = true
-		@ai.order self, direction
+	  if !@moved
+  	  @moved = true
+  	  @destination = @square.neighbor(direction)
+  	  @destination.destination = true
+  	  if mission
+  	    mission.update [@destination.row, @destination.col]
+	    end
+  		@ai.order self, direction
+		end
 	end
-
-	def position
-	  Point.new(row, col)
-  end
 
 	def moved?; @moved; end
 
@@ -47,6 +52,22 @@ class AntEngine::Ant
     return path
   end
 
+  def mission=(mission)
+    @mission = mission
+  end
+
+  def mission
+    @mission ||= if !moved?
+      @ai.missions.detect{|m| m.current_row == row && m.current_col == col}
+    else
+      @ai.missions.detect{|m| m.current_row == @destination.row && m.current_col == @destination.col}
+    end
+  end
+
+  def on_mission?
+    !!mission
+  end
+
   def direction(goal)
     @path ||= path_to(goal)
     @path.push(goal) if @path != false && !@path.include?(goal)
@@ -56,29 +77,6 @@ class AntEngine::Ant
       path = path_to(goal)
       return false if path.first.nil?
       direct_path(path[1] || path.first)
-    end
-  end
-
-  def visible_squares
-    @visible_squares ||= begin
-      mx = Math.sqrt(self.ai.viewradius2).to_i
-      offsets = []
-
-      (-mx..mx+1).each do |drow|
-        (-mx..mx+1).each do |dcol|
-          d = drow**2 + dcol**2
-          if d <= @ai.viewradius2
-            offsets << { :row => drow%@ai.rows - @ai.rows, :col => dcol%@ai.cols - @ai.cols }
-          end
-        end
-      end
-
-      visible_array = []
-      offsets.each do |offset|
-        visible_array << @ai.map[offset[:row]+self.row][offset[:col]+self.col]
-      end
-
-      visible_array
     end
   end
 

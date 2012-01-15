@@ -7,12 +7,16 @@ class AntEngine::Square
 	# Which column this square belongs to.
 	attr_accessor :col
 
-	attr_accessor :water, :food, :hill, :ai, :last_seen
+	attr_accessor :water, :food, :hill, :ai, :last_seen, :destination
 
 	def initialize water, food, hill, ant, row, col, ai
 		@water, @food, @hill, @ant, @row, @col, @ai = water, food, hill, ant, row, col, ai
 		@last_seen = 0
 	end
+
+	def destination?
+	  @destination
+  end
 
 	# Returns true if this square is not water. Square is passable if it's not water, it doesn't contain alive ants and it doesn't contain food.
 	def land?; !@water; end
@@ -24,6 +28,8 @@ class AntEngine::Square
 	def hill?; @hill; end
 
 	def enemy_hill?; @hill && @hill != 0; end
+
+	def my_hill?; @hill && @hill == 0; end
 	# Returns true if this square has an alive ant.
 	def ant?; @ant and @ant.alive?; end;
 
@@ -85,7 +91,7 @@ class AntEngine::Square
   end
 
   def inspect
-    [@row, @col].inspect
+    "#{[@row, @col].inspect} ls #{@last_seen}"
   end
 
   def direct_path(square)
@@ -127,5 +133,28 @@ class AntEngine::Square
     end
 
     dirs
+  end
+
+  def visible_squares
+    @visible_squares ||= begin
+      mx = Math.sqrt(self.ai.viewradius2).to_i
+      offsets = []
+
+      (-mx..mx+1).each do |drow|
+        (-mx..mx+1).each do |dcol|
+          d = drow**2 + dcol**2
+          if d <= @ai.viewradius2
+            offsets << { :row => drow%@ai.rows - @ai.rows, :col => dcol%@ai.cols - @ai.cols }
+          end
+        end
+      end
+
+      visible_array = []
+      offsets.each do |offset|
+        visible_array << @ai.map[offset[:row]+self.row][offset[:col]+self.col]
+      end
+
+      visible_array
+    end
   end
 end

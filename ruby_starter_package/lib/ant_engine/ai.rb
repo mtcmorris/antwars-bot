@@ -11,6 +11,8 @@ class AntEngine::AI
 
 	# Number of players. Available only after game's over.
 	attr_accessor :players
+
+	attr_accessor :missions
 	# Array of scores of players (you are player 0). Available only after game's over.
 	attr_accessor :score
 
@@ -23,6 +25,7 @@ class AntEngine::AI
 
 		@my_ants=[]
 		@enemy_ants=[]
+		@missions = []
 
 		@did_setup=false
 	end
@@ -128,6 +131,7 @@ class AntEngine::AI
 				square.ant=nil
 				square.hill=false
 				square.last_seen += 1
+				square.destination = false
 			end
 		end
 
@@ -177,22 +181,11 @@ class AntEngine::AI
 		if !c # assume two-argument form: ant, direction
 			ant, direction = a, b
 			@stdout.puts "o #{ant.row} #{ant.col} #{direction.to_s.upcase}"
-			new_position(ant.row, ant.col, direction)
 		else # assume three-argument form: row, col, direction
 			row, col, direction = a, b, c
 			@stdout.puts "o #{row} #{col} #{direction.to_s.upcase}"
-			new_position(row, col, direction)
 		end
 	end
-
-	def new_position(row, col, direction)
-	  case direction
-    when :N then [row - 1, col ]
-    when :S then [row + 1, col ]
-    when :E then [row , col + 1]
-    when :W then [row , col - 1]
-    end
-  end
 
 	# Returns an array of your alive ants on the gamefield.
 	def my_ants; @my_ants; end

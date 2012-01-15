@@ -1,5 +1,6 @@
 require 'ant_engine'
 require 'util/logger'
+require "mission"
 
 if `whoami`.chomp == "mtcmorris"
   require "rubygems"
@@ -23,63 +24,62 @@ class Bot
     @enemy_hives = []
     @past_postions = []
     @persistant_ants = ai.my_ants
+    @my_hives = []
   end
 
   def run(ai)
     # your turn code here
     start_turn = Time.now
     @logger.log "Ran turn"
-
-    @destinations = []
     food = food_squares(ai)
-    @logger.log food.inspect
 
     detect_hives!(ai)
     mark_visible_squares!(ai)
+    ai.missions.map(&:age)
+    ai.missions.each do |mission|
+      if !mission.active?(ai.my_ants)
+        @logger.log "Mission inactive"
+      end
+    end
+    ai.missions = ai.missions.reject(&:complete?).select{|m| m.active?(ai.my_ants) }
 
-    # Point.new(ai.my_ants.first.row, ai.my_ants.first.col).path()
   	ai.my_ants.each do |ant|
   	  if (Time.now - start_turn) < 0.6
     	  nearest_food = food.sort{|a, b| b.distance(ant.square) <=> a.distance(ant.square)}.pop
-    	  if nearest_food && nearest_food.distance(ant.square) < 60
+    	  if nearest_food && nearest_food.distance(ant.square) < 80
       	  food = food - [nearest_food]
           move_via_pathfinder(ant, nearest_food, "food")
+        elsif ant.on_mission?
+          follow_mission(ant)
         elsif @enemy_hives.any? && ai.my_ants.count > 10
           closest_hive = @enemy_hives.sort{|a, b| b.distance(ant.square) <=> a.distance(ant.square)}.last
           move_via_pathfinder(ant, closest_hive, "attack")
     	  else
-          # Need to persist
-          most_unseen_square = ai.map.flatten.sort{|a, b| a.last_seen <=> b.last_seen}.first
-          move_naively(ant,most_unseen_square, "exploring" )
+          most_unseen_square = ai.map.flatten.sort{|a, b| a.last_seen <=> b.last_seen}.last
+          most_unseen_square.visible_squares.each{|sq|
+            sq.last_seen = 0
+          }
+          ai.missions.push Mission.new(ant, most_unseen_square)
+          follow_mission(ant)
   	    end
     	else
     	  @logger.log "Bailed on complex stuff as #{Time.now - start_turn}"
   	  end
 
-      if !ant.moved?
-        # Can I move to a new position?
-        [:N, :E, :S, :W].shuffle.each do |dir|
-          coords = [ant.square.neighbor(dir).row, ant.square.neighbor(dir).col];
-          if good_move?(ant.square.neighbor(dir)) && @past_postions.select{|p| p == coords }.empty?
-            @logger.log "Ant moved somewhere new"
-            add_destination(ant.order dir)
-    				break
-  				end
-        end
-      end
-
-      if !ant.moved?
+      if !ant.moved? && ant.square.hill?
     		[:N, :E, :S, :W].shuffle.each do |dir|
     			if good_move?(ant.square.neighbor(dir))
-            @logger.log "Ant moved randomly"
-            add_destination(ant.order dir)
-    				break
+            @logger.log "Got off hill"
+            ant.order dir
     			end
     		end
   		end
+
+      # We didn't move so mark square as taken
+      (ant.square.destination = true ) if !ant.moved?
   	end
-  rescue Exception => e
-    @logger.log "EXCEPTION #{e.to_s}"
+  # rescue Exception => e
+  #   @logger.log "EXCEPTION #{e.to_s}"
   end
 
   def move_via_pathfinder(ant, square, reason = "unknown")
@@ -87,10 +87,14 @@ class Bot
     if directions && good_move?(ant.square.neighbor(directions.first))
       dir = directions.first
       @logger.log "Ant is #{reason} #{dir.to_s} from #{ant.row},#{ant.col} to #{square.inspect} via pfinder"
-      add_destination(ant.order dir)
+      ant.order dir
     else
       @logger.log "Ant wanted to #{reason} #{dir.to_s} from #{ant.row},#{ant.col} to #{square.inspect} via pfinder but was bad"
     end
+  end
+
+  def follow_mission(ant)
+    move_naively(ant, ant.mission.goal, "Following mission duration #{ant.mission.duration}" )
   end
 
   def move_naively(ant, square, reason = "unknown")
@@ -98,29 +102,31 @@ class Bot
     directions.shuffle.each do |dir|
       if good_move?(ant.square.neighbor(directions.first))
         @logger.log "Ant is #{reason} #{dir.to_s} from #{ant.row},#{ant.col} to #{square.inspect} naively"
-        add_destination(ant.order dir)
+        ant.order dir
       end
     end
   end
 
   def mark_visible_squares!(ai)
-    ai.my_ants.map(&:visible_squares).flatten.uniq.each {|sq|
+    ai.my_ants.map(&:square).map(&:visible_squares).flatten.uniq.each {|sq|
       sq.last_seen = 0
     }
   end
 
   def detect_hives!(ai)
-    known_hive_locations = @enemy_hives.map{|s| [s.row, s.col] }
-    @enemy_hives += ai.map.flatten.select{|s| s.enemy_hill? && !@enemy_hives.include?([s.row, s.col]) }
-  end
+    ai.map.flatten.each do |square|
+      if square.enemy_hill? && !@enemy_hives.include?(square)
+        @enemy_hives.push square
+      end
 
-  def add_destination(coords)
-    @destinations.push coords
-    @past_postions.push(coords) unless @past_postions.include?(coords)
+      if square.my_hill? && !@my_hives.include?(square)
+        @my_hives.push square
+      end
+    end
   end
 
   def good_move?(square)
-    square.land? && !square.ant? && @destinations.select{|d| d[0] == square.row && d[1] == square.col }.empty?
+    square.land? && !square.my_hill? && !square.destination? && !square.ant?
   end
 
   def distance(coord1, coord2)
