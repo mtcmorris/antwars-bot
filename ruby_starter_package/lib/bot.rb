@@ -154,6 +154,7 @@ class Bot
         @my_hives.push square
       end
     end
+    @enemy_hives.reject!{|h| h.my_ant? }
   end
 
   def good_move?(square)

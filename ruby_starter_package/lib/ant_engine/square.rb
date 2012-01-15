@@ -30,6 +30,8 @@ class AntEngine::Square
 	def enemy_hill?; @hill && @hill != 0; end
 
 	def my_hill?; @hill && @hill == 0; end
+
+	def my_ant?; @ant and @ant.alive? and @ant.mine?; end
 	# Returns true if this square has an alive ant.
 	def ant?; @ant and @ant.alive?; end;
 
