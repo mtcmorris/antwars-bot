@@ -40,8 +40,8 @@ class Bot
     	  nearest_food = food.sort{|a, b| b.distance(ant.square) <=> a.distance(ant.square)}.pop
     	  if nearest_food && nearest_food.distance(ant.square) < 60
       	  food = food - [nearest_food]
-          dir = ant.direction(nearest_food).first
-          if dir && good_move?(ant.square.neighbor(dir))
+          dir = ant.direction(nearest_food)
+          if dir && good_move?(ant.square.neighbor(dir.first))
             @logger.log "Ant is moving #{dir.to_s} from #{ant.row},#{ant.col} to #{nearest_food.inspect} via pfinder"
             add_destination(ant.order dir)
           else
