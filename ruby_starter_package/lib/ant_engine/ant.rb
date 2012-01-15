@@ -4,6 +4,7 @@ class AntEngine::Ant
 	attr_accessor :owner
 	# Square this ant sits on.
 	attr_accessor :square
+	attr_accessor :action_priority
 
 	attr_accessor :alive, :ai
 
@@ -12,6 +13,7 @@ class AntEngine::Ant
 	def initialize alive, owner, square, ai
 		@alive, @owner, @square, @ai = alive, owner, square, ai
 		@moved = false
+		@action_priority = false
 	end
 
 	# True if ant is alive.
@@ -33,12 +35,14 @@ class AntEngine::Ant
 	def order direction
 	  if !@moved
   	  @moved = true
+  	  raise "Moved to death" if(ai.my_ants.map(&:destination).compact.count != ai.my_ants.map(&:destination).compact.uniq.count)
   	  @destination = @square.neighbor(direction)
   	  @destination.destination = true
   	  if mission
         mission.update [@destination.row, @destination.col]
 	    end
   		@ai.order self, direction
+
 		end
 	end
 

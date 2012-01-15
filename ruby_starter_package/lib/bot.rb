@@ -44,14 +44,16 @@ class Bot
     ai.missions = ai.missions.reject(&:complete?).select{|m| m.active?(ai.my_ants) }
 
   	ai.my_ants.each do |ant|
-  	  if (Time.now - start_turn) < 0.6
+  	  if (Time.now - start_turn) < 0.7
     	  nearest_food = food.sort{|a, b| b.distance(ant.square) <=> a.distance(ant.square)}.pop
     	  if nearest_food && nearest_food.distance(ant.square) < 80
       	  food = food - [nearest_food]
           move_via_pathfinder(ant, nearest_food, "food")
         elsif ant.on_mission?
           follow_mission(ant)
+          ant.action_priority = 4
         elsif @enemy_hives.any? && ai.my_ants.count > 10
+          ant.action_priority = 5
           closest_hive = @enemy_hives.sort{|a, b| b.distance(ant.square) <=> a.distance(ant.square)}.last
           move_via_pathfinder(ant, closest_hive, "attack")
     	  else
@@ -61,6 +63,7 @@ class Bot
           }
           ai.missions.push Mission.new(ant, most_unseen_square)
           follow_mission(ant)
+          ant.action_priority = 3
   	    end
     	else
     	  @logger.log "Bailed on complex stuff as #{Time.now - start_turn}"
@@ -75,11 +78,34 @@ class Bot
     		end
   		end
 
+      if !ant.moved?
+        missionary_ants = ai.my_ants.select(&:action_priority).sort{|a, b| a.action_priority <=> b.action_priority }
+        missionary_ants.each do |other_ant|
+          if !ant.moved?
+          # Re enforce
+            move_naively(ant, other_ant.square, "Following ant")
+          end
+        end
+  		end
+
+  		if !ant.moved?
+    		[:N, :E, :S, :W].shuffle.each do |dir|
+    			if good_move?(ant.square.neighbor(dir))
+            @logger.log "Went randomly"
+            ant.order dir
+    			end
+    		end
+  		end
+
+
       # We didn't move so mark square as taken
       (ant.square.destination = true ) if !ant.moved?
   	end
+
+    raise "collieded" if(ai.my_ants.map(&:destination).compact.count != ai.my_ants.map(&:destination).compact.uniq.count)
   # rescue Exception => e
-  #   @logger.log "EXCEPTION #{e.to_s}"
+  #     @logger.log "EXCEPTION #{e.to_s}"
+  #     @logger.log caller.join("\n")
   end
 
   def move_via_pathfinder(ant, square, reason = "unknown")
@@ -89,18 +115,23 @@ class Bot
       @logger.log "Ant is #{reason} #{dir.to_s} from #{ant.row},#{ant.col} to #{square.inspect} via pfinder"
       ant.order dir
     else
-      @logger.log "Ant wanted to #{reason} #{dir.to_s} from #{ant.row},#{ant.col} to #{square.inspect} via pfinder but was bad"
+      @logger.log "Ant wanted to #{reason} #{dir.to_s} from #{ant.row},#{ant.col} to #{square.inspect} via pfinder but failed"
+      move_naively(ant, square, reason)
     end
   end
 
   def follow_mission(ant)
-    move_naively(ant, ant.mission.goal, "Following mission duration #{ant.mission.duration}" )
+    if ant.mission.duration > 10
+      move_via_pathfinder(ant, ant.mission.goal, "Following extended mission")
+    else
+      move_naively(ant, ant.mission.goal, "Following mission duration #{ant.mission.duration}" )
+    end
   end
 
   def move_naively(ant, square, reason = "unknown")
     directions = ant.square.direct_path(square)
     directions.shuffle.each do |dir|
-      if good_move?(ant.square.neighbor(directions.first))
+      if good_move?(ant.square.neighbor(dir))
         @logger.log "Ant is #{reason} #{dir.to_s} from #{ant.row},#{ant.col} to #{square.inspect} naively"
         ant.order dir
       end
