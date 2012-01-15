@@ -28,10 +28,11 @@ class Pathfinder
   end
 
   def path
+    #$stderr.puts "about to lookup cached path #{Time}"
     if cached_path = self.class.lookup(@start, @goal)
       return cached_path
     end
-    init_time = Time.new
+    init_time = Time.now
     closed_set = []
     open_set = [@start]
     came_from = {}
@@ -43,8 +44,8 @@ class Pathfinder
     while open_set.any?
       x = open_set.sort_by { |a| f_score[a] }.first
 
-      if x == @goal || (Time.new - init_time) > 0.02
-        return self.class.cache(reconstruct_path(came_from, came_from[@goal]))
+      if x == @goal || Time.now - init_time > 0.02
+        return self.class.cache(reconstruct_path(came_from, came_from[x]) << x)
       end
 
       open_set.delete x
@@ -76,7 +77,7 @@ class Pathfinder
       #nodes_traversed += 1
     end
 
-    raise RuntimeError, "could not find path from x:#{@start.col},y:#{@start.row} and x:#{@goal.col},y:#{@goal.row}"
+   #raise RuntimeError, "could not find path from x:#{@start.col},y:#{@start.row} and x:#{@goal.col},y:#{@goal.row}"
   end
 
   def reconstruct_path(came_from, current_node)
