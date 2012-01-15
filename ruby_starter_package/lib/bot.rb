@@ -69,6 +69,8 @@ class Bot
     		end
   		end
   	end
+  rescue Exception => e
+    @logger.log "EXCEPTION #{e.to_s}"
   end
 
   def add_destination(coords)
