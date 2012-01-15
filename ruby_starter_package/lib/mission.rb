@@ -11,14 +11,14 @@ class Mission
   end
 
   def complete?
-    current_row == goal.row && current_col == goal.col
+    @current_row == goal.row && @current_col == goal.col
   end
 
   def active?(ants)
-    @duration < 20 && ants.detect{|a| a.row == current_row && a.col == current_col }
+    @duration < 20 && ants.detect{|a| a.row == @current_row && a.col == @current_col }
   end
 
   def update(coords)
-    current_row, current_col = *coords
+    @current_row, @current_col = *coords
   end
 end

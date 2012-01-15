@@ -36,7 +36,7 @@ class AntEngine::Ant
   	  @destination = @square.neighbor(direction)
   	  @destination.destination = true
   	  if mission
-  	    mission.update [@destination.row, @destination.col]
+        mission.update [@destination.row, @destination.col]
 	    end
   		@ai.order self, direction
 		end
