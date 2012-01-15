@@ -33,5 +33,69 @@ class AntEngine::Ant
 		@ai.order self, direction
 	end
 
+	def position
+	  Point.new(row, col)
+  end
+
 	def moved?; @moved; end
+
+  def path_to(goal)
+    #$stderr.puts "Start pathfinding: #{Time.now - @ai.start_time}"
+    #$stderr.puts "path from #{self.square.row} #{self.square.col} to #{goal.row} #{goal.col}"
+    path = Pathfinder.new(self.square, goal).path
+    #$stderr.puts "Done pathfinding: #{Time.now - @ai.start_time}"
+    return path
+  end
+
+  def direction(goal)
+    @path ||= path_to(goal)
+    if location = @path.index(self.square)
+      direct_path(@path[location+1] || @path.last)
+    else
+      path = path_to(goal)
+      return false if path.first.nil?
+      direct_path(path[1] || path.first)
+    end
+  end
+
+  def direct_path(square)
+    dirs = []
+
+    row2, col2 = @ai.normalize(square.row, square.col)
+    row1, col1 = @ai.normalize(self.row, self.col)
+
+    if row1 < row2
+      if row2 - row1 >= @ai.rows / 2
+        dirs << :N
+      else
+        dirs << :S
+      end
+    end
+
+    if row2 < row1
+      if row1 - row2 >= @ai.rows / 2
+        dirs << :S
+      else
+        dirs << :N
+      end
+    end
+
+    if col1 < col2
+      if col2 - col1 >= @ai.cols / 2
+        dirs << :W
+      else
+        dirs << :E
+      end
+    end
+
+    if col2 < col1
+      if col1 - col2 >= @ai.cols / 2
+        dirs << :E
+      else
+        dirs << :W
+      end
+    end
+
+    dirs
+  end
 end

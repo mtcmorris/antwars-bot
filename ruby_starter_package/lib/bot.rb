@@ -1,6 +1,9 @@
 require 'ant_engine'
 require 'util/logger'
 
+require "rubygems"
+require "ir_b"
+
 class Bot
   def self.run(ai = AntEngine::AI.new)
     bot = new
@@ -15,38 +18,60 @@ class Bot
 
   def setup(ai)
     @logger = Logger.new
+    @enemy_hives = []
+    @past_postions = []
+    @persistant_ants = ai.my_ants
   end
 
   def run(ai)
     # your turn code here
     @logger.log "Ran turn"
+
     @destinations = []
-    # Get food locations
-    food = food_locations(ai)
+    food = food_squares(ai)
     @logger.log food.inspect
+
+    # Point.new(ai.my_ants.first.row, ai.my_ants.first.col).path()
   	ai.my_ants.each do |ant|
-  	  food_to_move_to = food.sort{|a, b| distance(b, [ant.row, ant.col]) <=> distance(a, [ant.row, ant.col])}.pop
-  	  if food_to_move_to
-    	  vector = get_vector(food_to_move_to, [ant.row, ant.col])
-    	  vector.each{|dir|
-          if good_move?(ant.square.neighbor(dir))
-    				@destinations.push (ant.order dir)
-            break
-          end
-    	  }
+  	  nearest_food = food.sort{|a, b| b.distance(ant.square) <=> a.distance(ant.square)}.pop
+  	  if nearest_food && nearest_food.distance(ant.square) < 60
+    	  food = food - [nearest_food]
+        dir = ant.direction(nearest_food).first
+        if dir && good_move?(ant.square.neighbor(dir))
+          @logger.log "Ant is moving #{dir.to_s} from #{ant.row},#{ant.col} to #{nearest_food.inspect} via pfinder"
+          add_destination(ant.order dir)
+        else
+          @logger.log "Ant wanted to move #{dir.to_s} from #{ant.row},#{ant.col} to #{nearest_food.inspect} via pfinder but was bad"
+        end
   	  end
 
       if !ant.moved?
-    		# Move randomly
+        # Can I move to a new position?
+        [:N, :E, :S, :W].shuffle.each do |dir|
+          coords = [ant.square.neighbor(dir).row, ant.square.neighbor(dir).col];
+          if good_move?(ant.square.neighbor(dir)) && @past_postions.select{|p| p == coords }.empty?
+            @logger.log "Ant moved somewhere new"
+            add_destination(ant.order dir)
+    				break
+  				end
+        end
+      end
 
+      if !ant.moved?
     		[:N, :E, :S, :W].shuffle.each do |dir|
     			if good_move?(ant.square.neighbor(dir))
-    				@destinations.push (ant.order dir)
+            @logger.log "Ant moved randomly"
+            add_destination(ant.order dir)
     				break
     			end
     		end
   		end
   	end
+  end
+
+  def add_destination(coords)
+    @destinations.push coords
+    @past_postions.push(coords) unless @past_postions.include?(coords)
   end
 
   def good_move?(square)
@@ -75,12 +100,12 @@ class Bot
     vector.shuffle
   end
 
-  def food_locations(ai)
+  def food_squares(ai)
     food_coords = []
     ai.map.each { |r|
       r.each{|c|
         if c.food
-          food_coords.push [c.row, c.col]
+          food_coords.push c
         end
       }
     }

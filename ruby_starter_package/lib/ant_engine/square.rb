@@ -43,4 +43,45 @@ class AntEngine::Square
 
 		return @ai.map[row][col]
 	end
+
+  def neighbors
+    [:N, :S, :E, :W].map { |d|
+      neighbor d
+    }.select { |n|
+      n.land?
+    }
+
+  #  a = [neighbor(:N), neighbor(:E), neighbor(:W), neighbor(:S)]
+  end
+
+  def nearby_squares(range = 10)
+    result = []
+
+    min_row = self.row - range
+    max_row = self.row + range
+    min_col = self.col - range
+    max_col = self.col + range
+
+    (min_row..max_row).each do |row|
+      (min_col..max_col).each do |col|
+        loc = @ai.normalize(row,col)
+        result << @ai.map[loc[0]][loc[1]]
+      end
+    end
+
+    result
+  end
+
+  def distance(square2)
+    x_dist = (self.col - square2.col).abs
+    x_dist = [x_dist, @ai.cols - x_dist].min
+    y_dist = (self.row - square2.row).abs
+    y_dist = [y_dist, @ai.rows - y_dist].min
+
+    x_dist**2 + y_dist**2
+  end
+
+  def inspect
+    [@row, @col].inspect
+  end
 end

@@ -9,3 +9,4 @@ end
 require 'ant_engine/ai'
 require 'ant_engine/ant'
 require 'ant_engine/square'
+require 'ant_engine/pathfinder'
