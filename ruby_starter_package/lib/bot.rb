@@ -43,27 +43,55 @@ class Bot
     end
     ai.missions = ai.missions.reject(&:complete?).select{|m| m.active?(ai.my_ants) }
 
+    # Move home if under attack
+
+    # @my_hives.each do |hive|
+    #   if hive.nearby_squares(5).select{|n| n.ant && n.ant.enemy? && n.ant.alive? }.any?
+    #     ai.my_ants.sort{|a, b| a.square.distance(hive) <=> b.square.distance(hive)}.take(5).each do |ant|
+    #       @logger.log "Defending the hive"
+    #       ant.also_attack = hive
+    #     end
+    #   end
+    # end
+
   	ai.my_ants.each do |ant|
-  	  if (Time.now - start_turn) < 0.7
-    	  nearest_food = food.sort{|a, b| b.distance(ant.square) <=> a.distance(ant.square)}.pop
-    	  if nearest_food && nearest_food.distance(ant.square) < 80
-      	  food = food - [nearest_food]
-          move_via_pathfinder(ant, nearest_food, "food")
-        elsif ant.on_mission?
-          follow_mission(ant)
-          ant.action_priority = 4
-        elsif @enemy_hives.any? && ai.my_ants.count > 10
-          ant.action_priority = 5
-          closest_hive = @enemy_hives.sort{|a, b| b.distance(ant.square) <=> a.distance(ant.square)}.last
-          move_via_pathfinder(ant, closest_hive, "attack")
-    	  else
-          most_unseen_square = ai.map.flatten.sort{|a, b| a.last_seen <=> b.last_seen}.last
-          most_unseen_square.visible_squares.each{|sq|
-            sq.last_seen = 0
-          }
-          ai.missions.push Mission.new(ant, most_unseen_square)
-          follow_mission(ant)
-          ant.action_priority = 3
+  	  if (Time.now - start_turn) < 0.6
+  	    if ant.requested_to_help?
+          move_naively(ant, ant.also_attack)
+	      elsif ant.nearby_foes.any?
+  	      if ant.nearby_friends.any?
+            ant.nearby_friends.each do |friend|
+              @logger.log "Rushing to friends aid"
+              friend.also_attack = ant.nearby_foes.first
+            end
+          else
+            retreat(ant, ant.nearby_foes.first)
+          end
+	      else
+      	  nearest_food = food.sort{|a, b| b.distance(ant.square) <=> a.distance(ant.square)}.pop
+      	  if nearest_food && nearest_food.distance(ant.square) < 60
+        	  food = food - [nearest_food]
+            move_via_pathfinder(ant, nearest_food, "food")
+          elsif ant.on_mission?
+            follow_mission(ant)
+            ant.action_priority = 4
+          elsif @enemy_hives.any? && ai.my_ants.count > 10
+            ant.action_priority = 5
+            closest_hive = @enemy_hives.sort{|a, b| b.distance(ant.square) <=> a.distance(ant.square)}.last
+            move_via_pathfinder(ant, closest_hive, "attack")
+      	  else
+            squares = ai.map.flatten
+
+            most_unseen_square = squares.sort{|a, b| a.last_seen <=> b.last_seen}.last
+            closest = squares.select{|sq| sq.last_seen == most_unseen_square.last_seen }.sort{|a, b| b.distance(ant.square) <=> a.distance(ant.square)}.last
+
+            closest.visible_squares.each{|sq|
+              sq.last_seen = 0
+            }
+            ai.missions.push Mission.new(ant, closest)
+            follow_mission(ant)
+            ant.action_priority = 3
+    	    end
   	    end
     	else
     	  @logger.log "Bailed on complex stuff as #{Time.now - start_turn}"
@@ -82,7 +110,7 @@ class Bot
         missionary_ants = ai.my_ants.select(&:action_priority).sort{|a, b| a.action_priority <=> b.action_priority }
         missionary_ants.each do |other_ant|
           if !ant.moved?
-          # Re enforce
+            # Re enforce
             move_naively(ant, other_ant.square, "Following ant")
           end
         end
@@ -101,11 +129,12 @@ class Bot
       # We didn't move so mark square as taken
       (ant.square.destination = true ) if !ant.moved?
   	end
+  	@logger.log "Turn over #{Time.now - start_turn}\n"
 
     raise "collieded" if(ai.my_ants.map(&:destination).compact.count != ai.my_ants.map(&:destination).compact.uniq.count)
   rescue Exception => e
-      @logger.log "EXCEPTION #{e.to_s}"
-      @logger.log caller.join("\n")
+    @logger.log "EXCEPTION #{e.to_s}"
+    @logger.log caller.join("\n")
   end
 
   def move_via_pathfinder(ant, square, reason = "unknown")
@@ -121,10 +150,21 @@ class Bot
   end
 
   def follow_mission(ant)
-    if ant.mission.duration > 10
-      move_via_pathfinder(ant, ant.mission.goal, "Following extended mission")
-    else
-      move_naively(ant, ant.mission.goal, "Following mission duration #{ant.mission.duration}" )
+    move_via_pathfinder(ant, ant.mission.goal, "Following extended mission")
+    # if ant.mission.duration > 10
+    #   move_via_pathfinder(ant, ant.mission.goal, "Following extended mission")
+    # else
+    #   move_naively(ant, ant.mission.goal, "Following mission duration #{ant.mission.duration}" )
+    # end
+  end
+
+  def retreat(ant, square, reason = "unknown")
+    directions = [:N, :S, :E, :W].reject{|dir| ant.square.direct_path(square).include?(dir) }
+    directions.shuffle.each do |dir|
+      if good_move?(ant.square.neighbor(dir))
+        @logger.log "Ant is retreating #{dir.to_s} from #{ant.row},#{ant.col} to #{square.inspect} naively"
+        ant.order dir
+      end
     end
   end
 
@@ -154,6 +194,7 @@ class Bot
         @my_hives.push square
       end
     end
+    @my_hives.reject!{|h| h.enemy_ant? }
     @enemy_hives.reject!{|h| h.my_ant? }
   end
 

@@ -5,6 +5,7 @@ class AntEngine::Ant
 	# Square this ant sits on.
 	attr_accessor :square
 	attr_accessor :action_priority
+	attr_accessor :also_attack
 
 	attr_accessor :alive, :ai
 
@@ -46,6 +47,10 @@ class AntEngine::Ant
 		end
 	end
 
+	def requested_to_help?
+    !!@also_attack
+  end
+
 	def moved?; @moved; end
 
   def path_to(goal)
@@ -66,6 +71,14 @@ class AntEngine::Ant
     else
       @ai.missions.detect{|m| m.current_row == @destination.row && m.current_col == @destination.col}
     end
+  end
+
+  def nearby_foes
+    self.square.nearby_squares(3).select{|n| n.ant && n.ant.enemy? && n.ant.alive? }
+  end
+
+  def nearby_friends
+    self.square.nearby_squares(2).select{|n| n.ant && n.ant.mine? && n.ant.alive? }.map(&:ant)
   end
 
   def on_mission?
