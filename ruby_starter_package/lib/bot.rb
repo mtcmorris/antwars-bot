@@ -27,6 +27,7 @@ class Bot
 
   def run(ai)
     # your turn code here
+    start_turn = Time.now
     @logger.log "Ran turn"
 
     @destinations = []
@@ -35,16 +36,20 @@ class Bot
 
     # Point.new(ai.my_ants.first.row, ai.my_ants.first.col).path()
   	ai.my_ants.each do |ant|
-  	  nearest_food = food.sort{|a, b| b.distance(ant.square) <=> a.distance(ant.square)}.pop
-  	  if nearest_food && nearest_food.distance(ant.square) < 60
-    	  food = food - [nearest_food]
-        dir = ant.direction(nearest_food).first
-        if dir && good_move?(ant.square.neighbor(dir))
-          @logger.log "Ant is moving #{dir.to_s} from #{ant.row},#{ant.col} to #{nearest_food.inspect} via pfinder"
-          add_destination(ant.order dir)
-        else
-          @logger.log "Ant wanted to move #{dir.to_s} from #{ant.row},#{ant.col} to #{nearest_food.inspect} via pfinder but was bad"
-        end
+  	  if (Time.now - start_turn) < 0.6
+    	  nearest_food = food.sort{|a, b| b.distance(ant.square) <=> a.distance(ant.square)}.pop
+    	  if nearest_food && nearest_food.distance(ant.square) < 60
+      	  food = food - [nearest_food]
+          dir = ant.direction(nearest_food).first
+          if dir && good_move?(ant.square.neighbor(dir))
+            @logger.log "Ant is moving #{dir.to_s} from #{ant.row},#{ant.col} to #{nearest_food.inspect} via pfinder"
+            add_destination(ant.order dir)
+          else
+            @logger.log "Ant wanted to move #{dir.to_s} from #{ant.row},#{ant.col} to #{nearest_food.inspect} via pfinder but was bad"
+          end
+    	  end
+    	else
+    	  @logger.log "Bailed on complex stuff as #{Time.now - start_turn}"
   	  end
 
       if !ant.moved?
