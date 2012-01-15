@@ -1,8 +1,10 @@
 require 'ant_engine'
 require 'util/logger'
 
-require "rubygems"
-require "ir_b"
+if `whoami`.chomp == "mtcmorris"
+  require "rubygems"
+  require "ir_b"
+end
 
 class Bot
   def self.run(ai = AntEngine::AI.new)
