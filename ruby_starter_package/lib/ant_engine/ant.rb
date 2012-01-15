@@ -47,6 +47,14 @@ class AntEngine::Ant
 		end
 	end
 
+	def has_nearby_enemy?
+	  nearby_enemies.any?
+  end
+
+  def nearby_enemies
+    @nearby_enemies ||= @ai.enemy_ants.select{|enemy| enemy.square.distance(square) < 40}
+  end
+
 	def requested_to_help?
     !!@also_attack
   end

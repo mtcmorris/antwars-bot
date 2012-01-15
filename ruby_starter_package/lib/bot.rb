@@ -58,14 +58,15 @@ class Bot
   	  if (Time.now - start_turn) < 0.6
   	    if ant.requested_to_help?
           move_naively(ant, ant.also_attack)
-	      elsif ant.nearby_foes.any?
+          # Don't use nearby_squares - is expensive
+	      elsif ant.has_nearby_enemy?
   	      if ant.nearby_friends.any?
             ant.nearby_friends.each do |friend|
               @logger.log "Rushing to friends aid"
               friend.also_attack = ant.nearby_foes.first
             end
           else
-            retreat(ant, ant.nearby_foes.first)
+            retreat(ant, ant.nearby_enemies.first)
           end
 	      else
       	  nearest_food = food.sort{|a, b| b.distance(ant.square) <=> a.distance(ant.square)}.pop
