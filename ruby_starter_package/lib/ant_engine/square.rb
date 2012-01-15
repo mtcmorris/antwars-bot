@@ -21,6 +21,8 @@ class AntEngine::Square
 	def food?; @food; end
 	# Returns owner number if this square is a hill, false if not
 	def hill?; @hill; end
+
+	def enemy_hill?; @hill && @hill != 0; end
 	# Returns true if this square has an alive ant.
 	def ant?; @ant and @ant.alive?; end;
 

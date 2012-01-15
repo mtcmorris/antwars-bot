@@ -34,19 +34,18 @@ class Bot
     food = food_squares(ai)
     @logger.log food.inspect
 
+    detect_hives!(ai)
+
     # Point.new(ai.my_ants.first.row, ai.my_ants.first.col).path()
   	ai.my_ants.each do |ant|
   	  if (Time.now - start_turn) < 0.6
     	  nearest_food = food.sort{|a, b| b.distance(ant.square) <=> a.distance(ant.square)}.pop
-    	  if nearest_food && nearest_food.distance(ant.square) < 60
+    	  if nearest_food && nearest_food.distance(ant.square) < 50
       	  food = food - [nearest_food]
-          dir = ant.direction(nearest_food)
-          if dir && good_move?(ant.square.neighbor(dir.first))
-            @logger.log "Ant is moving #{dir.to_s} from #{ant.row},#{ant.col} to #{nearest_food.inspect} via pfinder"
-            add_destination(ant.order dir)
-          else
-            @logger.log "Ant wanted to move #{dir.to_s} from #{ant.row},#{ant.col} to #{nearest_food.inspect} via pfinder but was bad"
-          end
+          move_via_pathfinder(ant, nearest_food, "food")
+        elsif @enemy_hives.any?
+          closest_hive = @enemy_hives.sort{|a, b| b.distance(ant.square) <=> a.distance(ant.square)}.last
+          move_via_pathfinder(ant, closest_hive, "attack")
     	  end
     	else
     	  @logger.log "Bailed on complex stuff as #{Time.now - start_turn}"
@@ -76,6 +75,22 @@ class Bot
   	end
   rescue Exception => e
     @logger.log "EXCEPTION #{e.to_s}"
+  end
+
+  def move_via_pathfinder(ant, square, reason = "unknown")
+    directions = ant.direction(square)
+    if directions && good_move?(ant.square.neighbor(directions.first))
+      dir = directions.first
+      @logger.log "Ant is #{reason} #{dir.to_s} from #{ant.row},#{ant.col} to #{square.inspect} via pfinder"
+      add_destination(ant.order dir)
+    else
+      @logger.log "Ant wanted to #{reason} #{dir.to_s} from #{ant.row},#{ant.col} to #{square.inspect} via pfinder but was bad"
+    end
+  end
+
+  def detect_hives!(ai)
+    known_hive_locations = @enemy_hives.map{|s| [s.row, s.col] }
+    @enemy_hives += ai.map.flatten.select{|s| s.enemy_hill? && !@enemy_hives.include?([s.row, s.col]) }
   end
 
   def add_destination(coords)

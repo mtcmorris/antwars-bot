@@ -49,6 +49,7 @@ class AntEngine::Ant
 
   def direction(goal)
     @path ||= path_to(goal)
+    @path.push(goal) if @path != false && !@path.include?(goal)
     if location = @path.index(self.square)
       direct_path(@path[location+1] || @path.last)
     else
