@@ -59,6 +59,29 @@ class AntEngine::Ant
     end
   end
 
+  def visible_squares
+    @visible_squares ||= begin
+      mx = Math.sqrt(self.ai.viewradius2).to_i
+      offsets = []
+
+      (-mx..mx+1).each do |drow|
+        (-mx..mx+1).each do |dcol|
+          d = drow**2 + dcol**2
+          if d <= @ai.viewradius2
+            offsets << { :row => drow%@ai.rows - @ai.rows, :col => dcol%@ai.cols - @ai.cols }
+          end
+        end
+      end
+
+      visible_array = []
+      offsets.each do |offset|
+        visible_array << @ai.map[offset[:row]+self.row][offset[:col]+self.col]
+      end
+
+      visible_array
+    end
+  end
+
   def direct_path(square)
     dirs = []
 

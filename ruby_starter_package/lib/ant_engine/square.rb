@@ -7,10 +7,11 @@ class AntEngine::Square
 	# Which column this square belongs to.
 	attr_accessor :col
 
-	attr_accessor :water, :food, :hill, :ai
+	attr_accessor :water, :food, :hill, :ai, :last_seen
 
 	def initialize water, food, hill, ant, row, col, ai
 		@water, @food, @hill, @ant, @row, @col, @ai = water, food, hill, ant, row, col, ai
+		@last_seen = 0
 	end
 
 	# Returns true if this square is not water. Square is passable if it's not water, it doesn't contain alive ants and it doesn't contain food.
@@ -85,5 +86,46 @@ class AntEngine::Square
 
   def inspect
     [@row, @col].inspect
+  end
+
+  def direct_path(square)
+    dirs = []
+
+    row2, col2 = @ai.normalize(square.row, square.col)
+    row1, col1 = @ai.normalize(self.row, self.col)
+
+    if row1 < row2
+      if row2 - row1 >= @ai.rows / 2
+        dirs << :N
+      else
+        dirs << :S
+      end
+    end
+
+    if row2 < row1
+      if row1 - row2 >= @ai.rows / 2
+        dirs << :S
+      else
+        dirs << :N
+      end
+    end
+
+    if col1 < col2
+      if col2 - col1 >= @ai.cols / 2
+        dirs << :W
+      else
+        dirs << :E
+      end
+    end
+
+    if col2 < col1
+      if col1 - col2 >= @ai.cols / 2
+        dirs << :E
+      else
+        dirs << :W
+      end
+    end
+
+    dirs
   end
 end

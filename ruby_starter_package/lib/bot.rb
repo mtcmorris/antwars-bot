@@ -35,18 +35,23 @@ class Bot
     @logger.log food.inspect
 
     detect_hives!(ai)
+    mark_visible_squares!(ai)
 
     # Point.new(ai.my_ants.first.row, ai.my_ants.first.col).path()
   	ai.my_ants.each do |ant|
   	  if (Time.now - start_turn) < 0.6
     	  nearest_food = food.sort{|a, b| b.distance(ant.square) <=> a.distance(ant.square)}.pop
-    	  if nearest_food && nearest_food.distance(ant.square) < 50
+    	  if nearest_food && nearest_food.distance(ant.square) < 60
       	  food = food - [nearest_food]
           move_via_pathfinder(ant, nearest_food, "food")
-        elsif @enemy_hives.any?
+        elsif @enemy_hives.any? && ai.my_ants.count > 10
           closest_hive = @enemy_hives.sort{|a, b| b.distance(ant.square) <=> a.distance(ant.square)}.last
           move_via_pathfinder(ant, closest_hive, "attack")
-    	  end
+    	  else
+          # Need to persist
+          most_unseen_square = ai.map.flatten.sort{|a, b| a.last_seen <=> b.last_seen}.first
+          move_naively(ant,most_unseen_square, "exploring" )
+  	    end
     	else
     	  @logger.log "Bailed on complex stuff as #{Time.now - start_turn}"
   	  end
@@ -86,6 +91,22 @@ class Bot
     else
       @logger.log "Ant wanted to #{reason} #{dir.to_s} from #{ant.row},#{ant.col} to #{square.inspect} via pfinder but was bad"
     end
+  end
+
+  def move_naively(ant, square, reason = "unknown")
+    directions = ant.square.direct_path(square)
+    directions.shuffle.each do |dir|
+      if good_move?(ant.square.neighbor(directions.first))
+        @logger.log "Ant is #{reason} #{dir.to_s} from #{ant.row},#{ant.col} to #{square.inspect} naively"
+        add_destination(ant.order dir)
+      end
+    end
+  end
+
+  def mark_visible_squares!(ai)
+    ai.my_ants.map(&:visible_squares).flatten.uniq.each {|sq|
+      sq.last_seen = 0
+    }
   end
 
   def detect_hives!(ai)

@@ -127,6 +127,7 @@ class AntEngine::AI
 				square.food=false
 				square.ant=nil
 				square.hill=false
+				square.last_seen += 1
 			end
 		end
 
