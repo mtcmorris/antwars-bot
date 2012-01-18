@@ -55,6 +55,10 @@ class AntEngine::Ant
     @nearby_enemies ||= @ai.enemy_ants.select{|enemy| enemy.square.distance(square) < 40}
   end
 
+  def nearby_friends(enemy)
+    @ai.my_ants.select{|ant| ant != self && ant.square.distance(enemy.square) < 40}
+  end
+
 	def requested_to_help?
     !!@also_attack
   end
@@ -79,14 +83,6 @@ class AntEngine::Ant
     else
       @ai.missions.detect{|m| m.current_row == @destination.row && m.current_col == @destination.col}
     end
-  end
-
-  def nearby_foes
-    self.square.nearby_squares(3).select{|n| n.ant && n.ant.enemy? && n.ant.alive? }
-  end
-
-  def nearby_friends
-    self.square.nearby_squares(2).select{|n| n.ant && n.ant.mine? && n.ant.alive? }.map(&:ant)
   end
 
   def on_mission?
@@ -144,5 +140,9 @@ class AntEngine::Ant
     end
 
     dirs
+  end
+
+  def inspect
+    "SQ #{square.inspect} M #{@moved}"
   end
 end

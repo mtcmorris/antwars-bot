@@ -57,13 +57,11 @@ class AntEngine::Square
 	end
 
   def neighbors
-    [:N, :S, :E, :W].map { |d|
+    @neighbors ||= [:N, :S, :E, :W].map { |d|
       neighbor d
     }.select { |n|
-      n.land?
+      !n.water?
     }
-
-  #  a = [neighbor(:N), neighbor(:E), neighbor(:W), neighbor(:S)]
   end
 
   def nearby_squares(range = 10)
@@ -92,6 +90,10 @@ class AntEngine::Square
 
     x_dist**2 + y_dist**2
   end
+
+  # def distance(square2)
+  #   Math.sqrt ((row - square2.row).abs ** 2 + (col - square2.col).abs ** 2)
+  # end
 
   def inspect
     "#{[@row, @col].inspect} ls #{@last_seen}"

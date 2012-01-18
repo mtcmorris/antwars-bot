@@ -55,18 +55,20 @@ class Bot
     # end
 
   	ai.my_ants.each do |ant|
+  	  turn_timer = Time.now
   	  if (Time.now - start_turn) < 0.6
   	    if ant.requested_to_help?
-          move_naively(ant, ant.also_attack)
-          # Don't use nearby_squares - is expensive
+  	      move_to_attack(ant, ant.also_attack, "Helping out")
 	      elsif ant.has_nearby_enemy?
-  	      if ant.nearby_friends.any?
-            ant.nearby_friends.each do |friend|
-              @logger.log "Rushing to friends aid"
-              friend.also_attack = ant.nearby_foes.first
+	        friends = ant.nearby_friends(ant.nearby_enemies.first)
+  	      if friends.any?
+            friends.each do |friend|
+              @logger.log "Calling in the calvery"
+              friend.also_attack = ant.nearby_enemies.first.square
             end
+            move_to_attack(ant, ant.nearby_enemies.first, "attacking")
           else
-            retreat(ant, ant.nearby_enemies.first)
+            retreat(ant, ant.nearby_enemies.first.square)
           end
 	      else
       	  nearest_food = food.sort{|a, b| b.distance(ant.square) <=> a.distance(ant.square)}.pop
@@ -108,41 +110,33 @@ class Bot
   		end
 
       if !ant.moved?
-        missionary_ants = ai.my_ants.select(&:action_priority).sort{|a, b| a.action_priority <=> b.action_priority }
-        missionary_ants.each do |other_ant|
+        attacked_ants = ai.my_ants.select(&:has_nearby_enemy?).sort{|a, b| a.square.distance(ant.square) <=> b.square.distance(ant.square)}
+        attacked_ants.each do |other_ant|
           if !ant.moved?
             # Re enforce
-            move_naively(ant, other_ant.square, "Following ant")
+            move_via_pathfinder(ant, other_ant.nearby_enemies.first.square, "Following attacked ant")
           end
         end
   		end
 
-  		if !ant.moved?
-    		[:N, :E, :S, :W].shuffle.each do |dir|
-    			if good_move?(ant.square.neighbor(dir))
-            @logger.log "Went randomly"
-            ant.order dir
-    			end
-    		end
-  		end
-
-
       # We didn't move so mark square as taken
       (ant.square.destination = true ) if !ant.moved?
+      @logger.log "Order ant #{Time.now - turn_timer}"
   	end
   	@logger.log "Turn over #{Time.now - start_turn}\n"
 
     raise "collieded" if(ai.my_ants.map(&:destination).compact.count != ai.my_ants.map(&:destination).compact.uniq.count)
-  rescue Exception => e
-    @logger.log "EXCEPTION #{e.to_s}"
-    @logger.log caller.join("\n")
+  # rescue Exception => e
+  #   @logger.log "EXCEPTION #{e.to_s}"
+  #   @logger.log caller.join("\n")
   end
 
   def move_via_pathfinder(ant, square, reason = "unknown")
+    pfind_start = Time.now
     directions = ant.direction(square)
     if directions && good_move?(ant.square.neighbor(directions.first))
       dir = directions.first
-      @logger.log "Ant is #{reason} #{dir.to_s} from #{ant.row},#{ant.col} to #{square.inspect} via pfinder"
+      @logger.log "T#{Time.now - pfind_start} Ant is #{reason} #{dir.to_s} from #{ant.row},#{ant.col} to #{square.inspect} via pfinder"
       ant.order dir
     else
       @logger.log "Ant wanted to #{reason} #{dir.to_s} from #{ant.row},#{ant.col} to #{square.inspect} via pfinder but failed"
@@ -164,6 +158,16 @@ class Bot
     directions.shuffle.each do |dir|
       if good_move?(ant.square.neighbor(dir))
         @logger.log "Ant is retreating #{dir.to_s} from #{ant.row},#{ant.col} to #{square.inspect} naively"
+        ant.order dir
+      end
+    end
+  end
+
+  def move_to_attack(ant, square, reason)
+    directions = ant.square.direct_path(square)
+    directions.sort{|a,b| ant.square.neighbor(a).distance(square) <=> ant.square.neighbor(b).distance(square)}.each do |dir|
+      if good_move?(ant.square.neighbor(dir))
+        @logger.log "Ant is #{reason} #{dir.to_s} from #{ant.row},#{ant.col} to #{square.inspect} attack"
         ant.order dir
       end
     end
@@ -200,29 +204,13 @@ class Bot
   end
 
   def good_move?(square)
-    square.land? && !square.my_hill? && !square.destination? && !square.ant?
+    square.land? && !square.my_hill? && !square.destination? && (!square.enemy_ant? || !(square.ant? && !square.ant.moved?))
   end
 
   def distance(coord1, coord2)
     Math.sqrt(
       (coord1[0] - coord2[0]).abs ** 2 + (coord1[1] - coord2[1]).abs ** 2
     )
-  end
-
-  def get_vector(coord1, coord2)
-    vector = []
-    if coord1[0] < coord2[0]
-      vector.push :N
-    elsif coord1[0] > coord2[0]
-      vector.push :S
-    end
-
-    if coord1[1] < coord2[1]
-      vector.push :W
-    elsif coord1[0] > coord2[0]
-      vector.push :E
-    end
-    vector.shuffle
   end
 
   def food_squares(ai)
